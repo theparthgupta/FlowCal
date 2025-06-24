@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import PropTypes from 'prop-types';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
@@ -14,7 +14,9 @@ import {
   Settings,
   Globe,
   Video,
-  MapPin
+  MapPin,
+  Moon,
+  Sun
 } from 'lucide-react';
 
 dayjs.extend(utc);
@@ -45,6 +47,7 @@ export default function VibeCalendarScheduler({
     buffer: 15,
     description: '',
     repeat: 'none',
+    reminder: 0,
   });
   const [conflicts, setConflicts] = useState([]);
   const [availabilities, setAvailabilities] = useState([]);
@@ -53,8 +56,27 @@ export default function VibeCalendarScheduler({
   const [editEventId, setEditEventId] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [eventToDelete, setEventToDelete] = useState(null);
-  const [viewMode, setViewMode] = useState('list'); // 'list' or 'month'
+  const [viewMode, setViewMode] = useState('list'); // 'list', 'month', 'week', or 'day'
   const [selectedDay, setSelectedDay] = useState(null);
+  const [weekStart, setWeekStart] = useState(dayjs(newEvent.date).startOf('week'));
+  const [dayViewDate, setDayViewDate] = useState(dayjs().format('YYYY-MM-DD'));
+  const [reminders, setReminders] = useState([]); // [{event, message, id}]
+  const reminderOptions = [
+    { value: 0, label: 'No reminder' },
+    { value: 5, label: '5 minutes before' },
+    { value: 10, label: '10 minutes before' },
+    { value: 30, label: '30 minutes before' },
+    { value: 60, label: '1 hour before' },
+  ];
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    if (isDark) {
+      document.body.classList.add('dark');
+    } else {
+      document.body.classList.remove('dark');
+    }
+  }, [isDark]);
 
   // Utility: get work window for a date
   const getWorkWindow = (date) => ({
@@ -169,6 +191,39 @@ export default function VibeCalendarScheduler({
     }
   }, [newEvent.date, events, generateAvailabilities]);
 
+  // Reminder notification logic
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = dayjs();
+      events.forEach(event => {
+        if (!event.reminder || event.reminder === 0) return;
+        const eventTime = dayjs.tz(`${event.date}T${event.time}`, event.timezone);
+        const remindAt = eventTime.subtract(event.reminder, 'minute');
+        // Only remind if within the last minute and not already reminded
+        if (
+          now.isAfter(remindAt) &&
+          now.isBefore(eventTime) &&
+          !reminders.some(r => r.id === event.id && r.message === remindAt.format())
+        ) {
+          setReminders(prev => [
+            ...prev,
+            {
+              id: event.id,
+              message: remindAt.format(),
+              event,
+              text: `Reminder: "${event.title}" at ${event.time} (${event.date}) in ${event.reminder} min`,
+            },
+          ]);
+        }
+      });
+    }, 30000); // check every 30s
+    return () => clearInterval(interval);
+  }, [events, reminders]);
+
+  const dismissReminder = (id, message) => {
+    setReminders(prev => prev.filter(r => !(r.id === id && r.message === message)));
+  };
+
   // Helper to get all days in current month
   const getMonthDays = (dateStr) => {
     const date = dayjs(dateStr);
@@ -187,10 +242,15 @@ export default function VibeCalendarScheduler({
     return days;
   };
 
+  // Helper to get all days in current week
+  const getWeekDays = (start) => {
+    return Array.from({ length: 7 }, (_, i) => start.add(i, 'day'));
+  };
+
   return (
-    <div className="max-w-6xl mx-auto p-6 bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100 min-h-screen animate-fadein">
-      <div className="bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl p-10 border border-purple-100">
-        <div className="flex items-center justify-between mb-10">
+    <div className={`max-w-6xl mx-auto p-2 sm:p-4 md:p-6 min-h-screen animate-fadein ${isDark ? 'bg-gray-900' : 'bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100'}`}>
+      <div className={`rounded-3xl shadow-2xl p-2 sm:p-4 md:p-10 border ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white/80 backdrop-blur-md border-purple-100'}`}>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 md:mb-10 gap-4">
           <div className="flex items-center space-x-4">
             <div className="p-4 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl shadow-lg animate-bounce-slow">
               <Calendar className="w-10 h-10 text-white" />
@@ -202,27 +262,54 @@ export default function VibeCalendarScheduler({
               <p className="text-gray-500 font-medium mt-1">Smart scheduling with conflict detection & timezone magic</p>
             </div>
           </div>
-          <button
-            onClick={() => setShowForm(true)}
-            className="flex items-center space-x-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white px-7 py-3 rounded-2xl hover:scale-105 hover:from-blue-600 hover:to-pink-500 transition-all duration-200 shadow-xl font-semibold text-lg group"
-          >
-            <Plus className="w-6 h-6 group-hover:rotate-90 transition-transform duration-300" />
-            <span>New Event</span>
-          </button>
+          <div className="flex gap-2 items-center flex-wrap">
+            <button
+              onClick={() => setIsDark(d => !d)}
+              className={`p-2 rounded-xl border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300 ${isDark ? 'bg-gray-700 border-gray-600 text-yellow-300' : 'bg-white border-purple-200 text-purple-700'} hover:scale-110`}
+              title="Toggle dark mode"
+              aria-label="Toggle dark mode"
+            >
+              {isDark ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
+            </button>
+            <button
+              onClick={() => setShowForm(true)}
+              className="flex items-center space-x-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all duration-200 shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+              aria-label="New Event"
+            >
+              <Plus className="w-5 h-5" />
+              <span className="hidden sm:inline">New Event</span>
+            </button>
+          </div>
         </div>
 
         <div className="flex gap-2">
           <button
-            className={`px-4 py-2 rounded-xl font-semibold transition-all ${viewMode === 'list' ? 'bg-purple-600 text-white' : 'bg-white text-purple-700 border border-purple-200'}`}
+            className={`px-4 py-2 rounded-xl font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 ${viewMode === 'list' ? 'bg-purple-600 text-white' : 'bg-white text-purple-700 border border-purple-200'}`}
             onClick={() => setViewMode('list')}
+            aria-label="List View"
           >
             List View
           </button>
           <button
-            className={`px-4 py-2 rounded-xl font-semibold transition-all ${viewMode === 'month' ? 'bg-purple-600 text-white' : 'bg-white text-purple-700 border border-purple-200'}`}
+            className={`px-4 py-2 rounded-xl font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 ${viewMode === 'month' ? 'bg-purple-600 text-white' : 'bg-white text-purple-700 border border-purple-200'}`}
             onClick={() => setViewMode('month')}
+            aria-label="Month View"
           >
             Month View
+          </button>
+          <button
+            className={`px-4 py-2 rounded-xl font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 ${viewMode === 'week' ? 'bg-purple-600 text-white' : 'bg-white text-purple-700 border border-purple-200'}`}
+            onClick={() => setViewMode('week')}
+            aria-label="Week View"
+          >
+            Week View
+          </button>
+          <button
+            className={`px-4 py-2 rounded-xl font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 ${viewMode === 'day' ? 'bg-purple-600 text-white' : 'bg-white text-purple-700 border border-purple-200'}`}
+            onClick={() => setViewMode('day')}
+            aria-label="Day View"
+          >
+            Day View
           </button>
         </div>
 
@@ -430,6 +517,19 @@ export default function VibeCalendarScheduler({
                   <option value="monthly">Monthly</option>
                 </select>
               </div>
+              {/* Remind me */}
+              <div className="relative">
+                <label className="block text-gray-700 font-semibold mb-1">Remind me</label>
+                <select
+                  className="w-full border-2 border-purple-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all shadow-sm"
+                  value={newEvent.reminder}
+                  onChange={e => setNewEvent({ ...newEvent, reminder: Number(e.target.value) })}
+                >
+                  {reminderOptions.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             {/* Availabilities & Conflicts & Action Buttons */}
             <div className="mt-8 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
@@ -477,12 +577,12 @@ export default function VibeCalendarScheduler({
         {/* Delete Confirmation Modal */}
         {showDeleteConfirm && (
           <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50 animate-fadein">
-            <div className="bg-white rounded-2xl p-8 shadow-2xl border-2 border-purple-200">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 sm:p-8 shadow-2xl border-2 border-purple-200 dark:border-gray-700 max-w-[90vw] w-full sm:w-auto">
               <h3 className="text-xl font-bold text-red-600 mb-4">Delete Event?</h3>
               <p className="mb-6">Are you sure you want to delete <span className="font-semibold">{eventToDelete?.title}</span>?</p>
-              <div className="flex gap-4 justify-end">
-                <button onClick={confirmDelete} className="bg-red-500 text-white px-6 py-2 rounded-xl font-bold hover:bg-red-600">Delete</button>
-                <button onClick={cancelDelete} className="bg-gray-200 text-gray-700 px-6 py-2 rounded-xl font-semibold hover:bg-gray-300">Cancel</button>
+              <div className="flex gap-4 justify-end flex-wrap">
+                <button onClick={confirmDelete} className="bg-red-500 text-white px-6 py-2 rounded-xl font-bold hover:bg-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400">Delete</button>
+                <button onClick={cancelDelete} className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-6 py-2 rounded-xl font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400">Cancel</button>
               </div>
             </div>
           </div>
@@ -534,6 +634,74 @@ export default function VibeCalendarScheduler({
           </div>
         )}
 
+        {/* Week Grid View */}
+        {viewMode === 'week' && (
+          <div className="bg-white/90 dark:bg-gray-800 rounded-2xl p-2 sm:p-6 mb-10 border-2 border-purple-100 dark:border-gray-700 shadow-xl animate-fadein overflow-x-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-purple-700 dark:text-purple-300 flex items-center gap-2"><Calendar className="w-5 h-5 text-purple-400" />Week of {weekStart.format('MMMM D, YYYY')}</h3>
+              <div className="flex gap-2">
+                <button className="px-3 py-1 rounded bg-purple-100 dark:bg-gray-700 text-purple-700 dark:text-purple-200 font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400" onClick={() => setWeekStart(weekStart.subtract(1, 'week'))} aria-label="Previous week">&lt;</button>
+                <button className="px-3 py-1 rounded bg-purple-100 dark:bg-gray-700 text-purple-700 dark:text-purple-200 font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400" onClick={() => setWeekStart(weekStart.add(1, 'week'))} aria-label="Next week">&gt;</button>
+              </div>
+            </div>
+            <div className="grid grid-cols-8 gap-1 text-xs font-semibold text-purple-600 dark:text-purple-200 mb-2 min-w-[700px]">
+              <div className="text-right pr-2">Time</div>
+              {getWeekDays(weekStart).map(d => <div key={d.format('YYYY-MM-DD')} className="text-center">{d.format('ddd D')}</div>)}
+            </div>
+            <div className="grid grid-cols-8 gap-1 min-w-[700px]">
+              {/* Time slots: 8am to 8pm */}
+              {Array.from({ length: 13 }, (_, i) => 8 + i).map(hour => (
+                <React.Fragment key={hour}>
+                  <div className="text-right pr-2 py-2 text-xs text-gray-400">{dayjs().hour(hour).minute(0).format('hA')}</div>
+                  {getWeekDays(weekStart).map(day => {
+                    const slotEvents = events.filter(e =>
+                      e.date === day.format('YYYY-MM-DD') &&
+                      parseInt(e.time.split(':')[0], 10) === hour
+                    );
+                    return (
+                      <div key={day.format('YYYY-MM-DD') + hour} className="min-h-[40px] relative">
+                        {slotEvents.map(e => (
+                          <div key={e.id} className="absolute left-0 right-0 top-0 px-2 py-1 rounded bg-purple-200 text-purple-900 text-xs truncate font-semibold shadow-sm border border-purple-300">
+                            {e.title}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Day View */}
+        {viewMode === 'day' && (
+          <div className="bg-white/90 rounded-2xl p-6 mb-10 border-2 border-purple-100 shadow-xl animate-fadein">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-purple-700 flex items-center gap-2"><Calendar className="w-5 h-5 text-purple-400" />{dayjs(dayViewDate).format('dddd, MMMM D, YYYY')}</h3>
+              <div className="flex gap-2">
+                <button className="px-3 py-1 rounded bg-purple-100 text-purple-700 font-bold" onClick={() => setDayViewDate(dayjs(dayViewDate).subtract(1, 'day').format('YYYY-MM-DD'))}>&lt;</button>
+                <button className="px-3 py-1 rounded bg-purple-100 text-purple-700 font-bold" onClick={() => setDayViewDate(dayjs(dayViewDate).add(1, 'day').format('YYYY-MM-DD'))}>&gt;</button>
+              </div>
+            </div>
+            <div className="divide-y divide-purple-100">
+              {events.filter(e => e.date === dayViewDate).length === 0 && <div className="text-gray-400 py-8 text-center">No events for this day</div>}
+              {events.filter(e => e.date === dayViewDate).sort((a, b) => a.time.localeCompare(b.time)).map(e => (
+                <div key={e.id} className="py-4 flex items-start gap-4">
+                  <div className="w-20 text-right text-xs text-purple-500 font-bold pt-1">{e.time}</div>
+                  <div className="flex-1">
+                    <div className="font-bold text-purple-700">{e.title}</div>
+                    <div className="text-xs text-gray-500">{e.duration} min • {e.type}</div>
+                    {e.description && <div className="text-xs text-gray-500 mt-1 italic">{e.description}</div>}
+                    {e.location && <div className="text-xs text-blue-500 mt-1">{e.location}</div>}
+                    {e.reminder > 0 && <div className="mt-2 text-purple-500 text-xs font-semibold">Reminds {reminderOptions.find(opt => opt.value === e.reminder)?.label}</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* List View (existing) */}
         {viewMode === 'list' && (
           <div className="space-y-6">
@@ -568,6 +736,17 @@ export default function VibeCalendarScheduler({
             {events.length === 0 && (<div className="text-center py-16 text-gray-400 animate-fadein"><Calendar className="w-20 h-20 mx-auto mb-6 text-purple-200" /><p className="text-2xl font-bold">No events scheduled yet</p><p className="text-md mt-2">Click <span className="text-purple-500 font-semibold">"New Event"</span> to get started</p></div>)}
           </div>
         )}
+
+        {/* In-app Reminders/Notifications */}
+        <div className="fixed top-6 right-2 sm:right-6 z-50 space-y-3" aria-live="polite" role="status">
+          {reminders.map(r => (
+            <div key={r.id + r.message} className="bg-purple-600 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-xl shadow-xl flex items-center gap-4 animate-fadein focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300">
+              <AlertCircle className="w-6 h-6 text-yellow-300" />
+              <span>{r.text}</span>
+              <button onClick={() => dismissReminder(r.id, r.message)} className="ml-4 text-white hover:text-yellow-300 font-bold text-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300" aria-label="Dismiss reminder">&times;</button>
+            </div>
+          ))}
+        </div>
       </div>
       {/* Animations */}
       <style>{`
