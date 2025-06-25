@@ -370,7 +370,7 @@ export default function VibeCalendarScheduler({
             </div>
             <div>
               <h1 className="text-4xl font-extrabold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-500 bg-clip-text text-transparent drop-shadow-lg">
-                Vibe Calendar Scheduler
+                FlowCal
               </h1>
               <p className="text-gray-500 font-medium mt-1">Smart scheduling with conflict detection & timezone magic</p>
             </div>
