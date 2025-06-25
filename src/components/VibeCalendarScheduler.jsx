@@ -18,6 +18,9 @@ import {
   Moon,
   Sun
 } from 'lucide-react';
+import { auth, db } from '../firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from 'firebase/auth';
+import { collection, addDoc, setDoc, doc, deleteDoc, onSnapshot, query, where, orderBy } from 'firebase/firestore';
 
 dayjs.extend(utc);
 dayjs.extend(timezonePlugin);
@@ -69,6 +72,11 @@ export default function VibeCalendarScheduler({
     { value: 60, label: '1 hour before' },
   ];
   const [isDark, setIsDark] = useState(false);
+  const [user, setUser] = useState(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authTab, setAuthTab] = useState('login');
+  const [authForm, setAuthForm] = useState({ email: '', password: '' });
+  const [authError, setAuthError] = useState('');
 
   useEffect(() => {
     if (isDark) {
@@ -77,6 +85,45 @@ export default function VibeCalendarScheduler({
       document.body.classList.remove('dark');
     }
   }, [isDark]);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, 'events'), where('uid', '==', user.uid), orderBy('date'));
+    const unsub = onSnapshot(q, (snap) => {
+      setEvents(snap.docs.map(doc => ({ ...doc.data(), id: doc.id })));
+    });
+    return () => unsub();
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      console.log('Logged in as:', user.uid);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    console.log('Loaded events:', events);
+  }, [events]);
+
+  const handleAuthInput = e => setAuthForm(f => ({ ...f, [e.target.name]: e.target.value }));
+  const handleLogin = async (e) => {
+    e.preventDefault(); setAuthError('');
+    try { await signInWithEmailAndPassword(auth, authForm.email, authForm.password); setShowAuthModal(false); } catch (err) { setAuthError(err.message); }
+  };
+  const handleSignup = async (e) => {
+    e.preventDefault(); setAuthError('');
+    try { await createUserWithEmailAndPassword(auth, authForm.email, authForm.password); setShowAuthModal(false); } catch (err) { setAuthError(err.message); }
+  };
+  const handleGoogle = async () => {
+    setAuthError('');
+    try { await signInWithPopup(auth, new GoogleAuthProvider()); setShowAuthModal(false); } catch (err) { setAuthError(err.message); }
+  };
+  const handleLogout = () => signOut(auth);
 
   // Utility: get work window for a date
   const getWorkWindow = (date) => ({
@@ -119,7 +166,7 @@ export default function VibeCalendarScheduler({
       if (slots.length >= 6) break;
     }
     return slots;
-  }, [events, newEvent.duration, newEvent.buffer, newEvent.timezone, getWorkWindow, checkConflicts, newEvent]);
+  }, [events, newEvent.duration, newEvent.buffer, newEvent.timezone, getWorkWindow, checkConflicts]);
 
   const handleEdit = (event) => {
     setEditEventId(event.id);
@@ -134,8 +181,8 @@ export default function VibeCalendarScheduler({
     setShowDeleteConfirm(true);
   };
 
-  const confirmDelete = () => {
-    setEvents(prev => prev.filter(e => e.id !== eventToDelete.id));
+  const confirmDelete = async () => {
+    await deleteEventFromFirestore(eventToDelete.id);
     setShowDeleteConfirm(false);
     setEventToDelete(null);
     if (editEventId === eventToDelete.id) {
@@ -149,47 +196,54 @@ export default function VibeCalendarScheduler({
     setEventToDelete(null);
   };
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!newEvent.title || !newEvent.date || !newEvent.time) return;
     const errs = checkConflicts(newEvent, events.filter(e => e.id !== editEventId));
     if (errs.length) {
       setConflicts(errs);
       return;
     }
-    if (editEventId) {
-      // Edit existing event
-      setEvents(prev => prev.map(e => e.id === editEventId ? { ...newEvent, id: editEventId } : e));
-      setEditEventId(null);
-    } else {
-      // Add new event
-      const toAdd = { ...newEvent, id: Date.now(), status: 'confirmed' };
-      let newEvents = [toAdd];
-      if (newEvent.repeat !== 'none') {
-        let base = dayjs.tz(`${newEvent.date}T${newEvent.time}`, newEvent.timezone);
-        for (let i = 1; i <= 5; i++) {
-          let nextDate;
-          if (newEvent.repeat === 'daily') nextDate = base.add(i, 'day');
-          if (newEvent.repeat === 'weekly') nextDate = base.add(i, 'week');
-          if (newEvent.repeat === 'monthly') nextDate = base.add(i, 'month');
-          if (nextDate) {
-            newEvents.push({ ...toAdd, id: Date.now() + i, date: nextDate.format('YYYY-MM-DD') });
+    try {
+      if (editEventId) {
+        // Edit existing event
+        const updated = { ...newEvent, id: editEventId };
+        await saveEventToFirestore(updated, true);
+        setEditEventId(null);
+      } else {
+        // Add new event(s)
+        const toAdd = { ...newEvent, status: 'confirmed' };
+        let newEvents = [toAdd];
+        if (newEvent.repeat !== 'none') {
+          let base = dayjs.tz(`${newEvent.date}T${newEvent.time}`, newEvent.timezone);
+          for (let i = 1; i <= 5; i++) {
+            let nextDate;
+            if (newEvent.repeat === 'daily') nextDate = base.add(i, 'day');
+            if (newEvent.repeat === 'weekly') nextDate = base.add(i, 'week');
+            if (newEvent.repeat === 'monthly') nextDate = base.add(i, 'month');
+            if (nextDate) {
+              newEvents.push({ ...toAdd, date: nextDate.format('YYYY-MM-DD') });
+            }
           }
         }
+        for (const evt of newEvents) {
+          await saveEventToFirestore(evt);
+        }
       }
-      setEvents(prev => [...prev, ...newEvents]);
-      onEventAdd && onEventAdd(toAdd);
+      setShowForm(false);
+      setNewEvent(prev => ({ ...prev, title: '', attendees: [] }));
+      setConflicts([]);
+      setAttendeeInput('');
+    } catch (err) {
+      alert('Failed to save event: ' + err.message);
     }
-    setShowForm(false);
-    setNewEvent(prev => ({ ...prev, title: '', attendees: [] }));
-    setConflicts([]);
-    setAttendeeInput('');
   };
 
   useEffect(() => {
     if (newEvent.date) {
       setAvailabilities(generateAvailabilities(newEvent.date));
     }
-  }, [newEvent.date, events, generateAvailabilities]);
+    // eslint-disable-next-line
+  }, [newEvent.date, newEvent.duration, newEvent.buffer, newEvent.timezone]);
 
   // Reminder notification logic
   useEffect(() => {
@@ -247,6 +301,22 @@ export default function VibeCalendarScheduler({
     return Array.from({ length: 7 }, (_, i) => start.add(i, 'day'));
   };
 
+  // Add or update event in Firestore
+  const saveEventToFirestore = async (event, isEdit = false) => {
+    if (!user) return;
+    const eventData = { ...event, uid: user.uid };
+    if (isEdit) {
+      await setDoc(doc(db, 'events', event.id), eventData);
+    } else {
+      await addDoc(collection(db, 'events'), eventData);
+    }
+  };
+
+  // Delete event from Firestore
+  const deleteEventFromFirestore = async (eventId) => {
+    await deleteDoc(doc(db, 'events', eventId));
+  };
+
   return (
     <div className={`max-w-6xl mx-auto p-2 sm:p-4 md:p-6 min-h-screen animate-fadein ${isDark ? 'bg-gray-900' : 'bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100'}`}>
       <div className={`rounded-3xl shadow-2xl p-2 sm:p-4 md:p-10 border ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white/80 backdrop-blur-md border-purple-100'}`}>
@@ -271,6 +341,20 @@ export default function VibeCalendarScheduler({
             >
               {isDark ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
             </button>
+            {/* Auth UI */}
+            {!user ? (
+              <button
+                onClick={() => setShowAuthModal(true)}
+                className="px-4 py-2 rounded-xl font-semibold bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow hover:from-blue-600 hover:to-purple-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                aria-label="Login or Signup"
+              >Login / Signup</button>
+            ) : (
+              <div className="flex items-center gap-2">
+                {user.photoURL && <img src={user.photoURL} alt="avatar" className="w-8 h-8 rounded-full" />}
+                <span className="text-purple-700 dark:text-purple-200 font-semibold text-sm">{user.displayName || user.email}</span>
+                <button onClick={handleLogout} className="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400" aria-label="Logout">Logout</button>
+              </div>
+            )}
             <button
               onClick={() => setShowForm(true)}
               className="flex items-center space-x-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all duration-200 shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
@@ -584,6 +668,30 @@ export default function VibeCalendarScheduler({
                 <button onClick={confirmDelete} className="bg-red-500 text-white px-6 py-2 rounded-xl font-bold hover:bg-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400">Delete</button>
                 <button onClick={cancelDelete} className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-6 py-2 rounded-xl font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400">Cancel</button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Auth Modal */}
+        {showAuthModal && (
+          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50 animate-fadein">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-xs shadow-2xl border-2 border-purple-200 dark:border-gray-700 relative">
+              <button className="absolute top-3 right-3 text-gray-400 hover:text-purple-600" onClick={() => setShowAuthModal(false)} aria-label="Close auth modal"><X className="w-6 h-6" /></button>
+              <div className="flex justify-center mb-4 gap-2">
+                <button onClick={() => setAuthTab('login')} className={`px-4 py-2 rounded-xl font-semibold ${authTab === 'login' ? 'bg-purple-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-purple-700 dark:text-purple-200'}`}>Login</button>
+                <button onClick={() => setAuthTab('signup')} className={`px-4 py-2 rounded-xl font-semibold ${authTab === 'signup' ? 'bg-purple-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-purple-700 dark:text-purple-200'}`}>Signup</button>
+              </div>
+              <form onSubmit={authTab === 'login' ? handleLogin : handleSignup} className="space-y-4">
+                <input type="email" name="email" autoComplete="email" required placeholder="Email" value={authForm.email} onChange={handleAuthInput} className="w-full border-2 border-purple-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all shadow-sm" />
+                <input type="password" name="password" autoComplete={authTab === 'login' ? 'current-password' : 'new-password'} required placeholder="Password" value={authForm.password} onChange={handleAuthInput} className="w-full border-2 border-purple-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all shadow-sm" />
+                {authError && <div className="text-red-500 text-sm">{authError}</div>}
+                <button type="submit" className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-xl font-bold shadow hover:from-blue-600 hover:to-purple-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400">{authTab === 'login' ? 'Login' : 'Signup'}</button>
+              </form>
+              <div className="my-4 text-center text-gray-400">or</div>
+              <button onClick={handleGoogle} className="w-full flex items-center justify-center gap-2 bg-white dark:bg-gray-700 border-2 border-purple-200 dark:border-gray-700 text-purple-700 dark:text-purple-200 px-4 py-2 rounded-xl font-semibold shadow hover:bg-purple-50 dark:hover:bg-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400">
+                <svg className="w-5 h-5" viewBox="0 0 48 48"><g><path fill="#4285F4" d="M24 9.5c3.54 0 6.7 1.22 9.19 3.23l6.85-6.85C35.64 2.7 30.23 0 24 0 14.82 0 6.71 5.82 2.69 14.09l7.98 6.19C12.13 14.16 17.62 9.5 24 9.5z"/><path fill="#34A853" d="M46.1 24.55c0-1.64-.15-3.22-.43-4.74H24v9.01h12.42c-.54 2.9-2.18 5.36-4.64 7.04l7.19 5.59C43.93 37.13 46.1 31.36 46.1 24.55z"/><path fill="#FBBC05" d="M10.67 28.28c-1.13-3.36-1.13-6.99 0-10.35l-7.98-6.19C.9 15.1 0 19.39 0 24c0 4.61.9 8.9 2.69 12.26l7.98-6.19z"/><path fill="#EA4335" d="M24 48c6.23 0 11.64-2.06 15.53-5.6l-7.19-5.59c-2.01 1.35-4.6 2.14-8.34 2.14-6.38 0-11.87-4.66-13.33-10.94l-7.98 6.19C6.71 42.18 14.82 48 24 48z"/></g></svg>
+                Continue with Google
+              </button>
             </div>
           </div>
         )}
