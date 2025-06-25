@@ -93,11 +93,45 @@ export default function VibeCalendarScheduler({
 
   useEffect(() => {
     if (!user) return;
-    const q = query(collection(db, 'events'), where('uid', '==', user.uid), orderBy('date'));
-    const unsub = onSnapshot(q, (snap) => {
-      setEvents(snap.docs.map(doc => ({ ...doc.data(), id: doc.id })));
+
+    // Query for events owned by the user
+    const q1 = query(
+      collection(db, 'events'),
+      where('uid', '==', user.uid),
+      orderBy('date')
+    );
+
+    // Query for events where the user is an attendee
+    const q2 = query(
+      collection(db, 'events'),
+      where('attendees', 'array-contains', user.email),
+      orderBy('date')
+    );
+
+    let ownedEvents = [];
+    let invitedEvents = [];
+
+    const mergeAndSet = () => {
+      // Merge and deduplicate by event id
+      const all = [...ownedEvents, ...invitedEvents];
+      const unique = Array.from(new Map(all.map(e => [e.id, e])).values());
+      setEvents(unique);
+    };
+
+    const unsub1 = onSnapshot(q1, (snap1) => {
+      ownedEvents = snap1.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      mergeAndSet();
     });
-    return () => unsub();
+
+    const unsub2 = onSnapshot(q2, (snap2) => {
+      invitedEvents = snap2.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      mergeAndSet();
+    });
+
+    return () => {
+      unsub1();
+      unsub2();
+    };
   }, [user]);
 
   useEffect(() => {
@@ -177,17 +211,24 @@ export default function VibeCalendarScheduler({
   };
 
   const handleDelete = (event) => {
+    console.log('handleDelete called', event);
     setEventToDelete(event);
     setShowDeleteConfirm(true);
   };
 
   const confirmDelete = async () => {
-    await deleteEventFromFirestore(eventToDelete.id);
-    setShowDeleteConfirm(false);
-    setEventToDelete(null);
-    if (editEventId === eventToDelete.id) {
-      setShowForm(false);
-      setEditEventId(null);
+    console.log('confirmDelete called');
+    try {
+      await deleteEventFromFirestore(eventToDelete.id);
+      setShowDeleteConfirm(false);
+      setEventToDelete(null);
+      if (editEventId === eventToDelete.id) {
+        setShowForm(false);
+        setEditEventId(null);
+      }
+    } catch (err) {
+      alert('Failed to delete event: ' + err.message);
+      console.error('Delete error:', err);
     }
   };
 
@@ -316,6 +357,8 @@ export default function VibeCalendarScheduler({
   const deleteEventFromFirestore = async (eventId) => {
     await deleteDoc(doc(db, 'events', eventId));
   };
+
+  console.log('showDeleteConfirm:', showDeleteConfirm, 'eventToDelete:', eventToDelete);
 
   return (
     <div className={`max-w-6xl mx-auto p-2 sm:p-4 md:p-6 min-h-screen animate-fadein ${isDark ? 'bg-gray-900' : 'bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100'}`}>
@@ -665,7 +708,7 @@ export default function VibeCalendarScheduler({
               <h3 className="text-xl font-bold text-red-600 mb-4">Delete Event?</h3>
               <p className="mb-6">Are you sure you want to delete <span className="font-semibold">{eventToDelete?.title}</span>?</p>
               <div className="flex gap-4 justify-end flex-wrap">
-                <button onClick={confirmDelete} className="bg-red-500 text-white px-6 py-2 rounded-xl font-bold hover:bg-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400">Delete</button>
+                <button onClick={() => { console.log('modal delete button clicked'); confirmDelete(); }} className="bg-red-500 text-white px-6 py-2 rounded-xl font-bold hover:bg-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400">Delete</button>
                 <button onClick={cancelDelete} className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-6 py-2 rounded-xl font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400">Cancel</button>
               </div>
             </div>
