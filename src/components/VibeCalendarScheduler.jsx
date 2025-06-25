@@ -502,18 +502,17 @@ export default function VibeCalendarScheduler({
                 <label className="block text-gray-700 font-semibold mb-1">Title</label>
                 <input
                   type="text"
-                  className="w-full border-2 border-purple-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all shadow-sm"
+                  className="w-full border-2 border-purple-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all shadow-sm bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700"
                   value={newEvent.title}
                   onChange={e => setNewEvent({ ...newEvent, title: e.target.value })}
                   placeholder="Event title"
                 />
-                <span className="absolute right-3 top-8 text-purple-300"><Calendar className="w-5 h-5" /></span>
               </div>
               {/* Type */}
               <div className="relative">
                 <label className="block text-gray-700 font-semibold mb-1">Type</label>
                 <select
-                  className="w-full border-2 border-purple-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all shadow-sm"
+                  className="w-full border-2 border-purple-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all shadow-sm bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700"
                   value={newEvent.type}
                   onChange={e => setNewEvent({ ...newEvent, type: e.target.value })}
                 >
@@ -521,47 +520,43 @@ export default function VibeCalendarScheduler({
                     <option key={type.value} value={type.value}>{type.label}</option>
                   ))}
                 </select>
-                <span className="absolute right-3 top-8 text-purple-300"><Settings className="w-5 h-5" /></span>
               </div>
               {/* Date */}
-              <div className="relative">
+              <div>
                 <label className="block text-gray-700 font-semibold mb-1">Date</label>
                 <input
                   type="date"
-                  className="w-full border-2 border-purple-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all shadow-sm"
+                  className="w-full border-2 border-purple-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all shadow-sm bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700"
                   value={newEvent.date}
                   onChange={e => setNewEvent({ ...newEvent, date: e.target.value })}
                 />
-                <span className="absolute right-3 top-8 text-purple-300"><Calendar className="w-5 h-5" /></span>
               </div>
               {/* Time */}
-              <div className="relative">
+              <div>
                 <label className="block text-gray-700 font-semibold mb-1">Time</label>
                 <input
                   type="time"
-                  className="w-full border-2 border-purple-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all shadow-sm"
+                  className="w-full border-2 border-purple-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all shadow-sm bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700"
                   value={newEvent.time}
                   onChange={e => setNewEvent({ ...newEvent, time: e.target.value })}
                 />
-                <span className="absolute right-3 top-8 text-purple-300"><Clock className="w-5 h-5" /></span>
               </div>
               {/* Duration */}
               <div className="relative">
                 <label className="block text-gray-700 font-semibold mb-1">Duration (min)</label>
                 <input
                   type="number"
-                  className="w-full border-2 border-purple-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all shadow-sm"
+                  className="w-full border-2 border-purple-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all shadow-sm bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700"
                   value={newEvent.duration}
                   min={1}
                   onChange={e => setNewEvent({ ...newEvent, duration: Number(e.target.value) })}
                 />
-                <span className="absolute right-3 top-8 text-purple-300"><Clock className="w-5 h-5" /></span>
               </div>
               {/* Timezone */}
               <div className="relative">
                 <label className="block text-gray-700 font-semibold mb-1">Timezone</label>
                 <select
-                  className="w-full border-2 border-purple-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all shadow-sm"
+                  className="w-full border-2 border-purple-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all shadow-sm bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700"
                   value={newEvent.timezone}
                   onChange={e => setNewEvent({ ...newEvent, timezone: e.target.value })}
                 >
@@ -569,14 +564,13 @@ export default function VibeCalendarScheduler({
                     <option key={tz} value={tz}>{tz}</option>
                   ))}
                 </select>
-                <span className="absolute right-3 top-8 text-purple-300"><Globe className="w-5 h-5" /></span>
               </div>
               {/* Location */}
               <div className="relative">
                 <label className="block text-gray-700 font-semibold mb-1">Location</label>
                 <input
                   type="text"
-                  className="w-full border-2 border-purple-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all shadow-sm"
+                  className="w-full border-2 border-purple-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all shadow-sm bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700"
                   value={newEvent.location}
                   onChange={e => setNewEvent({ ...newEvent, location: e.target.value })}
                   placeholder="e.g. Zoom, Google Meet, Office"
@@ -589,7 +583,7 @@ export default function VibeCalendarScheduler({
                 <div className="flex">
                   <input
                     type="text"
-                    className="flex-1 border-2 border-purple-200 rounded-l-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all shadow-sm"
+                    className="flex-1 border-2 border-purple-200 rounded-l-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all shadow-sm bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700"
                     value={attendeeInput}
                     onChange={e => setAttendeeInput(e.target.value)}
                     placeholder="Add attendee email"
@@ -624,7 +618,7 @@ export default function VibeCalendarScheduler({
               <div className="md:col-span-2 relative">
                 <label className="block text-gray-700 font-semibold mb-1">Description / Notes</label>
                 <textarea
-                  className="w-full border-2 border-purple-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all shadow-sm min-h-[60px]"
+                  className="w-full border-2 border-purple-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all shadow-sm min-h-[60px] bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700"
                   value={newEvent.description}
                   onChange={e => setNewEvent({ ...newEvent, description: e.target.value })}
                   placeholder="Add any notes or details about the event..."
@@ -634,7 +628,7 @@ export default function VibeCalendarScheduler({
               <div className="relative">
                 <label className="block text-gray-700 font-semibold mb-1">Repeat</label>
                 <select
-                  className="w-full border-2 border-purple-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all shadow-sm"
+                  className="w-full border-2 border-purple-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all shadow-sm bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700"
                   value={newEvent.repeat}
                   onChange={e => setNewEvent({ ...newEvent, repeat: e.target.value })}
                 >
@@ -648,7 +642,7 @@ export default function VibeCalendarScheduler({
               <div className="relative">
                 <label className="block text-gray-700 font-semibold mb-1">Remind me</label>
                 <select
-                  className="w-full border-2 border-purple-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all shadow-sm"
+                  className="w-full border-2 border-purple-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all shadow-sm bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700"
                   value={newEvent.reminder}
                   onChange={e => setNewEvent({ ...newEvent, reminder: Number(e.target.value) })}
                 >
@@ -725,8 +719,8 @@ export default function VibeCalendarScheduler({
                 <button onClick={() => setAuthTab('signup')} className={`px-4 py-2 rounded-xl font-semibold ${authTab === 'signup' ? 'bg-purple-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-purple-700 dark:text-purple-200'}`}>Signup</button>
               </div>
               <form onSubmit={authTab === 'login' ? handleLogin : handleSignup} className="space-y-4">
-                <input type="email" name="email" autoComplete="email" required placeholder="Email" value={authForm.email} onChange={handleAuthInput} className="w-full border-2 border-purple-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all shadow-sm" />
-                <input type="password" name="password" autoComplete={authTab === 'login' ? 'current-password' : 'new-password'} required placeholder="Password" value={authForm.password} onChange={handleAuthInput} className="w-full border-2 border-purple-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all shadow-sm" />
+                <input type="email" name="email" autoComplete="email" required placeholder="Email" value={authForm.email} onChange={handleAuthInput} className="w-full border-2 border-purple-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all shadow-sm bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700" />
+                <input type="password" name="password" autoComplete={authTab === 'login' ? 'current-password' : 'new-password'} required placeholder="Password" value={authForm.password} onChange={handleAuthInput} className="w-full border-2 border-purple-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all shadow-sm bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700" />
                 {authError && <div className="text-red-500 text-sm">{authError}</div>}
                 <button type="submit" className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-xl font-bold shadow hover:from-blue-600 hover:to-purple-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400">{authTab === 'login' ? 'Login' : 'Signup'}</button>
               </form>
