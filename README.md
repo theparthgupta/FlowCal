@@ -1,70 +1,116 @@
-# Getting Started with Create React App
+# FlowCal
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A modern, collaborative calendar and scheduling web app built with React, Firebase, and Tailwind CSS. FlowCal enables users to create, manage, and share events with real-time updates, reminders, and timezone support.
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+- **User Authentication**: Sign up, log in, and log out with email/password or Google.
+- **Event Scheduling**: Create, edit, and delete events with support for types, durations, locations, and attachments.
+- **Collaboration**: Invite attendees by email and view events you're invited to.
+- **Conflict Detection**: Automatic detection of scheduling conflicts.
+- **Reminders**: Set customizable reminders for events.
+- **Timezone Support**: Schedule and view events in any timezone.
+- **Multiple Views**: Switch between list, month, week, and day calendar views.
+- **Dark Mode**: Toggle between light and dark themes.
+- **Responsive UI**: Built with Tailwind CSS for a seamless experience on all devices.
+- **PWA Ready**: Installable as a Progressive Web App.
 
-### `npm start`
+## Tech Stack
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- **Frontend**: React, Tailwind CSS, Day.js, Lucide React Icons
+- **Backend/Cloud**: Firebase (Authentication, Firestore, Storage, Analytics)
+- **Testing**: Jest, React Testing Library
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Getting Started
 
-### `npm test`
+### Prerequisites
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- Node.js (v16+ recommended)
+- npm
 
-### `npm run build`
+### Installation
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/your-username/flowcal.git
+   cd flowcal
+   ```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+3. **Configure Firebase:**
+   - Create a Firebase project at [Firebase Console](https://console.firebase.google.com/).
+   - Enable Authentication (Email/Password and Google), Firestore, and Storage.
+   - Copy your Firebase config to a `.env` file in the project root:
+     ```
+     REACT_APP_FIREBASE_API_KEY=your_api_key
+     REACT_APP_FIREBASE_AUTH_DOMAIN=your_auth_domain
+     REACT_APP_FIREBASE_PROJECT_ID=your_project_id
+     REACT_APP_FIREBASE_STORAGE_BUCKET=your_storage_bucket
+     REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
+     REACT_APP_FIREBASE_APP_ID=your_app_id
+     REACT_APP_FIREBASE_MEASUREMENT_ID=your_measurement_id
+     ```
 
-### `npm run eject`
+4. **Start the development server:**
+   ```bash
+   npm start
+   ```
+   Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### Running Tests
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+```bash
+npm test
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+## Project Structure
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+```
+src/
+  components/
+    VibeCalendarScheduler.jsx   # Main calendar and scheduling component
+  firebase.js                  # Firebase configuration and exports
+  App.js                       # App entry, renders the scheduler
+  index.js                     # React root
+  index.css, App.css           # Styles (Tailwind + custom)
+public/
+  index.html, manifest.json, icons  # PWA and static assets
+firestore.rules                # Firestore security rules
+tailwind.config.js             # Tailwind CSS configuration
+```
 
-## Learn More
+## Usage
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+- **Authentication**: Log in or sign up to start scheduling.
+- **Add Events**: Click the "+" button, fill in event details, and invite attendees.
+- **View Modes**: Switch between list, month, week, or day views.
+- **Dark Mode**: Toggle the theme using the UI switch.
+- **Reminders**: Set reminders for upcoming events.
+- **Attachments**: Upload files to events (stored in Firebase Storage).
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## Deployment
 
-### Code Splitting
+To build for production:
+```bash
+npm run build
+```
+Deploy the `build/` folder to your preferred hosting. For Firebase Hosting:
+```bash
+npm install -g firebase-tools
+firebase login
+firebase init
+firebase deploy
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
 
-### Analyzing the Bundle Size
+## Acknowledgements
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- [Create React App](https://create-react-app.dev/)
+- [Firebase](https://firebase.google.com/)
+- [Tailwind CSS](https://tailwindcss.com/)
+- [Day.js](https://day.js.org/)
+- [Lucide Icons](https://lucide.dev/)
